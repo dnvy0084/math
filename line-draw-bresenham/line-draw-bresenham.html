@@ -29,7 +29,7 @@
 					if( typeof buffer === "undefined" || 
 						buffer[i] == this.colorBuffer[i] ) continue;
 
-					this.colorBuffer[i] = buffer[i];
+					this.colorBuffer[i] = buffer[i]; 
 
 					this.render( i % this.col, parseInt( i / this.col ), this.colorBuffer[i] );
 				}
