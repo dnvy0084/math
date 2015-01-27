@@ -6,8 +6,8 @@
 		canvas{ background-color: #cdcdcd; }
 	</style>
 	
-
-	<script type="text/javascript">
+	<!-- Pixelate Class -->
+	<script type="text/javascript"> 
 		/**
 		* colorBuffer로 현재 픽셀 값을 저장하여 변경된 픽셀만 render 이벤트 발생. 
 		*/
@@ -37,6 +37,7 @@
 		};
 	</script>
 
+	<!-- Line Draw Methods -->
 	<script type="text/javascript">
 
 		/**
@@ -97,8 +98,56 @@
 			return buf;
 		};
 
+		function lineToSlope( ax, ay, bx, by )
+		{
+			for( var i = 0; i < arguments.length; i++ )
+				arguments[i] = parseInt( arguments[i] );
+
+			buf = [];
+
+			var dx = Math.abs( bx - ax ),
+				dy = Math.abs( by - ay ),
+				m, b, di, x, y, t;
+
+			if( dx > dy )
+			{
+				m = dy / dx;
+				di = ax < bx ? +1 : -1;
+				t = bx + di;
+
+				if( ay > by ) m = -m;
+
+				for( x = ax, y = ay; x != t; x += di )
+				{
+					y += m;
+
+					buf.push( x );
+					buf.push( parseInt( y ) );
+				}
+			}
+			else
+			{
+				m = dx / dy;
+				di = ay < by ? +1 : -1;
+				t = by + di;
+
+				if( ax > bx ) m = -m;
+
+				for( x = ax, y = ay; y != t; y += di )
+				{
+					x += m;
+					
+					buf.push( parseInt( x ) );
+					buf.push( y );
+				}
+			}
+
+			return buf;
+		};
+
 	</script>
 
+	<!-- Main Documentaion -->
 	<script type="text/javascript">
 		(function (){
 			
@@ -111,7 +160,7 @@
 				backgroundColor = "#6d6d6d";	// 배경 픽셀값 
 				a = { x: 0, y: 0 }, 
 				b = { x: 200, y: 200 };
-				lineToFunc = lineTolinearFunc;
+				lineToFunc = lineToSlope;
 
 			/**
 			* window.onload 
