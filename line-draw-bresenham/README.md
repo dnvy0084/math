@@ -1,4 +1,5 @@
-'''javascript
+
+```javascript
 function lineToBresenham( ax, ay, bx, by )
 		{
 			for( var i = 0; i < arguments.length; i++ )
@@ -57,4 +58,4 @@ function lineToBresenham( ax, ay, bx, by )
 
 			return buf;
 		};
-'''
+```
