@@ -1,7 +1,7 @@
 #Line Draw
 
-## linear equation
+## Linear equation
 
 ## DDA( digital differential analyzer )
 
-## bresenham algorithm
+## Bresenham algorithm
