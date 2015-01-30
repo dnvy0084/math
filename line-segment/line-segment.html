@@ -1,0 +1,166 @@
+<html>
+<head>
+	<title>line segment check</title>
+	<style type="text/css">
+		body{ margin: 0; };
+		canvas{ background-color: #cdcdcd; };
+	</style>
+	<script type="text/javascript">
+
+		function Vector2D( x, y )
+		{
+			this.x = x || 0;
+			this.y = y || 0;
+		};
+
+		Vector2D.prototype = 
+		{
+			add: function( v )
+			{
+				return new Vector2D(
+					this.x + v.x,
+					this.y + v.y
+				);
+			},
+
+			sub: function( v )
+			{
+				return new Vector2D(
+					this.x - v.x,
+					this.y - v.y
+				);
+			},
+
+			mul: function( v )
+			{
+				return new Vector2D(
+					this.x * v.x,
+					this.y * v.y
+				);
+			},
+
+			dot: function( v )
+			{
+				return this.x * v.x + this.y * v.y;
+			},
+
+			scale: function( len )
+			{
+				this.x *= len;
+				this.y *= len;
+
+				return this;
+			},
+
+			clone: function()
+			{
+				return new Vector2D( this.x, this.y );
+			}
+		};
+
+		function Line( a, b, thickness, color )
+		{
+			this.a = a || new Vector2D();
+			this.b = b || new Vector2D();
+
+			this.thickness = thickness || 1;
+			this.color = color || "#000000";
+		};
+
+	</script>
+	<script type="text/javascript">
+		(function (){
+			
+			var canvas,
+				context,
+				lines = [];
+				points = [];
+
+			function init()
+			{
+				canvas = document.getElementById( "canvas" );
+				context = canvas.getContext( "2d" );
+
+				canvas.width = document.body.clientWidth;
+				canvas.height = document.body.clientHeight;
+
+				var aline = new Line( new Vector2D( 0, 0 ), new Vector2D( canvas.width, canvas.height ), 2, "#0000ff" );
+
+				lines.push( aline );
+
+				var bline = new Line( new Vector2D( 0, canvas.height ), new Vector2D( 800, 0 ), 2, "#ff0000" );
+
+				lines.push( bline );
+
+				detectSegmentation( aline.a, aline.b, bline.a, bline.b );
+
+				(function render(){
+
+					draw();
+					//requestAnimationFrame( render );
+
+				})();
+			};
+
+			function detectSegmentation( va, vb, vc, vd )
+			{
+				var AB = vb.sub( va ),
+					CD = vd.sub( vc ),
+					AC = vc.sub( va );
+
+				var a = AB.dot( AB ),
+					b = CD.dot( AB ),
+					c = b,
+					d = CD.dot( CD ),
+					e = AC.dot( AB ),
+					f = AC.dot( CD );
+
+				var detA = a * d -b * c;
+					s = ( e * d - f * b ) / detA,
+					t = ( a * f - c * e ) / detA;
+
+				points.push( AB.scale( s ).add( va ) );
+			};
+
+			function draw()
+			{
+				context.save();
+
+				var line, point;
+
+				for( var i = 0, n = lines.length; i < n; i++ )
+				{
+					line = lines[i];
+
+					context.lineWidth = line.thickness;
+					context.strokeStyle = line.color;
+					context.beginPath();
+					context.moveTo( line.a.x, line.a.y );
+					context.lineTo( line.b.x, line.b.y );
+					context.stroke();	
+				}
+
+				for( i = 0, n = points.length; i < n; i++ )
+				{
+					point = points[i];
+
+					context.fillStyle = "#00ff00";
+					context.beginPath();
+					context.arc( point.x, point.y, 5, 0, 2 * Math.PI );
+					context.fill();
+				}
+
+				context.restore();
+			};
+
+			window.onload = init;
+
+		})();
+	</script>
+</head>
+<body>
+	<div class="warpper">
+		<canvas id="canvas"></canvas>
+	</div>
+</body>
+</html>
