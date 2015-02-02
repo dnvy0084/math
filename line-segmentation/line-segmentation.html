@@ -2,8 +2,23 @@
 <head>
 	<title>line segment check</title>
 	<style type="text/css">
+
 		body{ margin: 0; };
-		canvas{ background-color: #cdcdcd; };
+
+		.watermark{
+			position: absolute;
+			top: 0px;
+			left: 100%;
+			font-family: NanumGothic;
+			font-size: 100px;
+			border: 1px solid #000;
+		}
+
+		canvas{ 
+			position: absolute;
+			top: 0;
+		};
+
 	</style>
 	<script type="text/javascript">
 
@@ -73,8 +88,9 @@
 			
 			var canvas,
 				context,
-				lines = [];
-				points = [];
+				lines = [],
+				points = [],
+				drawingLine;
 
 			function init()
 			{
@@ -84,46 +100,120 @@
 				canvas.width = document.body.clientWidth;
 				canvas.height = document.body.clientHeight;
 
-				var aline = new Line( new Vector2D( 0, 0 ), new Vector2D( canvas.width, canvas.height ), 2, "#0000ff" );
+				lines.push( new Line( new Vector2D( 0, 0 ), new Vector2D( canvas.width, canvas.height ), 2, "#9d9d9d" ) );
 
-				lines.push( aline );
+				lines.push( new Line( new Vector2D( 0, canvas.height ), new Vector2D( canvas.width * 0.8, 0 ), 2, "#9d9d9d" ) );
 
-				var bline = new Line( new Vector2D( 0, canvas.height ), new Vector2D( 800, 0 ), 2, "#ff0000" );
+				checkSegment();
+				draw();
 
-				lines.push( bline );
+				canvas.addEventListener( "mousedown", ondown );
+				canvas.addEventListener( "mouseup", onup );
 
-				detectSegmentation( aline.a, aline.b, bline.a, bline.b );
+				canvas.addEventListener( "touchstart", ondown );
+				canvas.addEventListener( "touchend", ondown );
 
-				(function render(){
-
-					draw();
-					//requestAnimationFrame( render );
-
-				})();
+				document.body.addEventListener( "touchstart", function(e){
+					e.preventDefault();
+				})
 			};
 
-			function detectSegmentation( va, vb, vc, vd )
+			function ondown( e )
+			{
+				e.preventDefault();
+
+				if( e.type == "touchstart" && e.changedTouches.length )
+					e = e.changedTouches[0];
+
+				drawingLine = new Line( 
+					new Vector2D( e.clientX, e.clientY ),
+					new Vector2D( e.clientX, e.clientY ),
+					2, "#9d9d9d"
+				);
+
+				lines.push( drawingLine );
+
+				canvas.addEventListener( "mousemove", onmove );
+				canvas.addEventListener( "touchmove", onmove );
+			};
+
+			function onmove( e )
+			{
+				e.preventDefault();
+
+				if( e.type == "touchmove" && e.changedTouches.length )
+					e = e.changedTouches[0];
+
+				drawingLine.b.x = e.clientX;
+				drawingLine.b.y = e.clientY;
+
+				checkSegment();
+				draw();
+			};
+
+			function onup( e )
+			{
+				e.preventDefault();
+
+				drawingLine = null;
+
+				canvas.removeEventListener( "mousemove", onmove );
+				canvas.removeEventListener( "touchmove", onmove );
+			};
+
+			function checkSegment()
+			{
+				points = [];
+
+				var a, b, p;
+
+				for( var i = 0, n = lines.length - 1; i < n; i++ )
+				{
+					a = lines[i];
+
+					for( var j = i + 1; j <= n; j++ )
+					{
+						b = lines[j];
+
+						p = detectSegment( a.a, a.b, b.a, b.b );
+
+						if( p != null ) points.push( p );
+					}
+				}
+			};
+
+			/**
+			* va -> vb, vc -> vd의 두개 선분 교차점 검색
+			*/
+			function detectSegment( va, vb, vc, vd )
 			{
 				var AB = vb.sub( va ),
-					CD = vd.sub( vc ),
-					AC = vc.sub( va );
-
+					CD = vd.sub( vc );
+				
 				var a = AB.dot( AB ),
-					b = CD.dot( AB ), 
-					c = b,
-					d = CD.dot( CD ),
-					e = AC.dot( AB ),
+					b = c = AB.dot( CD ),
+					d = CD.dot( CD );
+				
+				var detM = -a * d + b * c;
+
+				if( detM == 0 ) return null; // 행렬식이 없으면 평행하거나, 겹치는 경우. 
+
+				var AC = vc.sub( va );
+
+				var e = AC.dot( AB ),
 					f = AC.dot( CD );
 
-				var detA = a * d -b * c;
-					s = ( e * d - f * b ) / detA,
-					t = ( a * f - c * e ) / detA;
+				var s = ( -e * d + b * f ) / detM,
+					t = ( a * f - c * e ) / detM;
 
-				points.push( AB.scale( s ).add( va ) );
+				if( s < 0 || s > 1 || t < 0 || t > 1 ) return null;
+
+				return AB.scale( s ).add( va );
 			};
 
 			function draw()
 			{
+				context.clearRect( 0, 0, canvas.width, canvas.height );
 				context.save();
 
 				var line, point;
@@ -144,7 +234,7 @@
 				{
 					point = points[i];
 
-					context.fillStyle = "#00ff00";
+					context.fillStyle = "#ff0000";
 					context.beginPath();
 					context.arc( point.x, point.y, 5, 0, 2 * Math.PI );
 					context.fill();
@@ -159,7 +249,8 @@
 	</script>
 </head>
 <body>
-	<div class="warpper">
+	<div class="wrapper">
+		<div class="watermark">drag!</div>
 		<canvas id="canvas"></canvas>
 	</div>
 </body>
