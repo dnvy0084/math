@@ -1,10 +1,6 @@
 <html>
 <head>
 	<title>bresenham line draw algorithm example</title>
-	<style type="text/css">
-		body{ margin: 0; }
-		canvas{ background-color: #cdcdcd; }
-	</style>
 	
 	<!-- Pixelate Class -->
 	<script type="text/javascript"> 
@@ -238,9 +234,10 @@
 				hourHand = { x: 0, y: 0, color: "#0000ff", len: 0.6 },		// 시침
 				minHand = { x: 0, y: 0, color: "#ff0000", len: 0.7 },		// 분침
 				secHand = { x: 0, y: 0, color: "#3d3d3d", len: 0.8 },		// 초침
-				hands = [ hourHand, minHand, secHand ];
+				hands = [ hourHand, minHand, secHand ],
 				lineToFunc = lineToBresenham, 	// line drawing function
-				_90radian = Math.PI / 2;
+				_90radian = Math.PI / 2,
+				pixelImg;
 
 			/**
 			* window.onload 
@@ -250,6 +247,8 @@
 				canvas = document.getElementById( "canvas" );
 				context = canvas.getContext( "2d" );
 				colorBuffer = [];
+
+				pixelImg = document.getElementById( "pixel" );
 
 				scene = new Pixelate( 10, 10, onRender.bind( this ) );
 
@@ -411,10 +410,18 @@
 				context.save();
 
 					context.setTransform( 1,0,0,1, x + 1, y + 1 );
-					context.beginPath();
-					context.rect( 0, 0, pixelWidth - 1, pixelHeight - 1 );
-					context.fillStyle = data;
-					context.fill();
+
+					if( data == backgroundColor )
+					{
+						context.drawImage( pixelImg, 0, 0 );
+					}
+					else
+					{
+						context.beginPath();
+						context.rect( 0, 0, pixelWidth - 1, pixelHeight - 1 );
+						context.fillStyle = data;
+						context.fill();
+					}
 
 				context.restore();
 			};
@@ -424,10 +431,17 @@
 
 		})();
 	</script>
+
+	<style type="text/css">
+		body{ margin: 0; }
+		canvas{ background-color: #cdcdcd; }
+		.asset{visibility: hidden; position: absolute; top: 0;}
+	</style>
 </head>
 <body>
 	<div class="wrapper">
 		<canvas id="canvas"></canvas>
+		<img id="pixel" src="http://dnvy0084.github.io/raw/legoPixel.jpg" alt="pixel" class="asset">
 	</div>
 </body>
 </html>
