@@ -1,0 +1,419 @@
+<html>
+<head>
+	<title>vector reflection</title>
+
+	<script type="text/javascript">
+
+		function Vector2D( x, y )
+		{
+			this.x = x || 0;
+			this.y = y || 0;
+		};
+
+		Vector2D.prototype = 
+		{
+			add: function( v )
+			{
+				return new Vector2D(
+					this.x + v.x,
+					this.y + v.y
+				);
+			},
+
+			sub: function( v )
+			{
+				return new Vector2D(
+					this.x - v.x,
+					this.y - v.y
+				);
+			},
+
+			mul: function( v )
+			{
+				return new Vector2D(
+					this.x * v.x,
+					this.y * v.y
+				);
+			},
+
+			dot: function( v )
+			{
+				return this.x * v.x + this.y * v.y;
+			},
+
+			scale: function( len )
+			{
+				this.x *= len;
+				this.y *= len;
+
+				return this;
+			},
+
+			length: function()
+			{
+				return Math.sqrt( this.x * this.x + this.y * this.y );
+			},
+
+			lengthNonSqrt: function()
+			{
+				return this.x * this.x + this.y * this.y;
+			},
+
+			normalize: function()
+			{
+				var len = this.length();
+
+				return new Vector2D(
+					this.x / len, 
+					this.y / len
+				);
+			},
+
+			normal: function( ccw )
+			{
+				if( ccw ) 
+					return new Vector2D( this.y, -this.x );
+
+				return new Vector2D( -this.y, this.x );
+			}
+		};
+
+
+		function Line( a, b, thickness, color )
+		{
+			this.a = a || new Vector2D();
+			this.b = b || new Vector2D();
+
+			this.thickness = thickness || 1;
+			this.color = color || "#000000";
+		};
+
+	</script>
+
+	<script type="text/javascript">
+		(function (){
+			
+			var canvas,
+				context,
+				startP = .35,
+				endP = .65,
+				drawingLine,
+				firingLine,
+				lines = [],
+				balls = [],
+				ballRadius = 5,
+				ballStyle = "#ff0000",
+				_360radian = 2 * Math.PI,
+				G = 0.35;
+
+			function init()
+			{
+				canvas = document.getElementById( "canvas" );
+				context = canvas.getContext( "2d" );
+
+				onResize( null );
+
+				canvas.addEventListener( "touchstart", onDown );
+				canvas.addEventListener( "mousedown", onDown );
+
+				canvas.addEventListener( "touchend", onUp );
+				canvas.addEventListener( "mouseup", onUp );
+
+				(function render(){
+
+					draw();
+					requestAnimationFrame( render );
+
+				})();
+			};
+
+			function onResize(e)
+			{
+				canvas.width = document.body.clientWidth;
+				canvas.height = document.body.clientHeight;
+			};
+
+			function moveBalls()
+			{
+				var a, b = new Vector2D(), p;
+
+				for( var n = balls.length; n--; )
+				{
+					a = balls[n];
+
+					b.x = a.x + a.v.x;
+					b.y = a.y + a.v.y;
+
+					p = checkCollision( a, b );
+
+					if( p == null )
+					{
+						a.x += a.v.x;
+						a.y += a.v.y;
+
+						a.v.y += G;
+					}
+					else
+					{
+						
+					}
+
+					if( a.y > canvas.height || b.x < 0 || b.x > canvas.width )
+						balls.splice( n, 1 );
+				};
+			};
+
+			function checkCollision( a, b )
+			{
+				var l;
+
+				for( var i = 0, n = lines.length; i < n; i++ )
+				{
+					l = lines[i];
+
+					if( !hitTestRect( a, b, l.a, l.b ) ) continue;
+					
+
+				}
+			};
+
+			function hitTestRect( a, b, c, d )
+			{
+				var rectA = getRect( a, b ),
+					rectB = getRect( c, d );
+
+				if( rectA.left > rectB.right || 
+					rectA.right < rectB.left || 
+					rectA.top > rectB.bottom ||
+					rectA.bottom < rectB.top ) return false;
+
+				return true;
+			};
+
+			function getRect( a, b )
+			{
+				var r = { left: 0, right: 0, top: 0, bottom: 0 };
+
+				if( a.x < b.x )
+				{
+					r.left = a.x;
+					r.right = b.x;
+				}
+				else
+				{
+					r.left = b.x;
+					r.right = a.x;
+				}
+
+				if( a.y < b.y )
+				{
+					r.top = a.y;
+					r.bottom = b.y;
+				}
+				else
+				{
+					r.top = b.y;
+					r.bottom = a.y;	
+				}
+
+				return r;
+			};
+
+			function fire( vec )
+			{
+				var ball = new Vector2D( vec.a.x, vec.a.y );
+
+				ball.v = vec.a.sub( vec.b ).scale( 0.2 );
+
+				balls.push( ball );
+			};
+
+
+
+
+
+
+
+			function draw()
+			{
+				context.clearRect( 0, 0, canvas.width, canvas.height );
+
+				moveBalls();
+
+				var l, b;
+
+				for( var i = 0, n = lines.length; i < n; i++ )
+					drawLine( lines[i] );
+
+				for( i = 0, n = balls.length; i < n; i++ )
+					drawBall( balls[i] );
+
+				if( firingLine != null )
+					drawLine( firingLine );
+			}
+
+			function drawBall( ball )
+			{
+				context.save();
+
+					context.setTransform( 1,0,0,1, ball.x, ball.y )
+					context.beginPath();
+					context.arc( 0, 0, ballRadius, 0, _360radian );
+					context.fillStyle = ballStyle;
+					context.fill();
+
+				context.restore();
+			};
+
+			function drawLine( line )
+			{
+				context.save();
+
+					context.beginPath();
+					context.moveTo( line.a.x, line.a.y );
+					context.lineTo( line.b.x, line.b.y );
+					context.lineWidth = line.thickness;
+					context.strokeStyle = line.color;
+					context.stroke();
+
+				context.restore();
+			};
+
+
+
+			
+
+
+
+
+
+
+			function onDown(e)
+			{
+				var ctrlKey = e.ctrlKey;
+
+				if( e && e.type === "touchstart" )
+				{
+					e.preventDefault();
+
+					if( e.changedTouches && e.changedTouches.length )
+						e = e.changedTouches[0];
+				}	
+
+				canvas.addEventListener( "mousemove", onMove );
+				canvas.addEventListener( "touchmove", onMove );
+
+				if( !ctrlKey )
+				{
+					firingLine = new Line(
+						new Vector2D( e.clientX, e.clientY ),
+						new Vector2D( e.clientX, e.clientY ),
+						2, 
+						"#ff0000"
+					);
+				}
+				else
+				{
+					drawingLine = new Line(
+						new Vector2D( e.clientX, e.clientY ),
+						new Vector2D( e.clientX, e.clientY ),
+						1, 
+						"#000000"
+					);
+
+					lines.push( drawingLine );
+				}
+			};
+
+			function onUp(e)
+			{
+				canvas.removeEventListener( "mousemove", onMove );
+				canvas.removeEventListener( "touchmove", onMove );
+
+				if( !e.ctrlKey )
+					fire( firingLine );
+
+				firingLine = null;
+			};
+
+			function onMove( e )
+			{
+				var ctrlKey = e.ctrlKey;
+
+				if( e && e.type === "touchstart" )
+				{
+					if( e.changedTouches && e.changedTouches.length )
+						e = e.changedTouches[0];
+				}
+
+				if( !ctrlKey )
+				{
+					firingLine.b.x = e.clientX;
+					firingLine.b.y = e.clientY;
+				}
+				else
+				{
+					drawingLine.b.x = e.clientX;
+					drawingLine.b.y = e.clientY;	
+				}
+			}
+
+			window.onload = init;
+			window.onresize = onResize;
+		})();
+	</script>
+	
+
+	<style type="text/css">
+		body{
+			margin: 0;
+		}
+
+		canvas{
+			position: absolute;
+			top: 0;
+		}
+
+		.outer
+		{
+			position: absolute;
+			width: 100%;
+			height: 100%;
+		}
+
+		.inner
+		{
+			position: absolute;
+			width: 100%;
+			top: 50%;
+
+			font-family: Helvetica;
+			font-size: 6em;
+			color: #ddd;
+
+			text-align: center;
+
+			transform: translate( 0%, -50% );
+		}
+
+		.bold
+		{
+			font-weight: bold;
+			color: #ddf;
+		}
+
+	</style>
+</head>
+
+<body>
+	<div class="wrapper">
+		<div class="outer">
+			<div class="inner">
+				<span class="bold">Drag</span> to fire ball<br>
+				<span class="bold">Ctrl + Drag</span> to draw line
+			</div>
+		</div>
+		<canvas id="canvas"/>
+	</div>
+</body>
+</html>
