@@ -51,7 +51,10 @@
 
 			length: function()
 			{
-				return Math.sqrt( this.x * this.x + this.y * this.y );
+				var x = ( this.x < 0 ) ? -this.x : this.x,
+					y = ( this.y < 0 ) ? -this.y : this.y;
+
+				return Math.sqrt( x * x + y * y );
 			},
 
 			lengthNonSqrt: function()
@@ -62,6 +65,8 @@
 			normalize: function()
 			{
 				var len = this.length();
+
+				console.log( "normalize x: %f, y: %f", this.x / len, this.y / len );
 
 				return new Vector2D(
 					this.x / len, 
@@ -135,7 +140,7 @@
 
 			function moveBalls()
 			{
-				var a, b = new Vector2D(), p;
+				var a, b = new Vector2D(), result, p;
 
 				for( var n = balls.length; n--; )
 				{
@@ -144,9 +149,9 @@
 					b.x = a.x + a.v.x;
 					b.y = a.y + a.v.y;
 
-					p = checkCollision( a, b );
+					result = checkCollision( a, b );
 
-					if( p == null )
+					if( result == null )
 					{
 						a.x += a.v.x;
 						a.y += a.v.y;
@@ -155,7 +160,12 @@
 					}
 					else
 					{
-						
+						p = result[0];
+
+						a.x = p.x;
+						a.y = p.y;
+
+						a.v = getReflectionVector( p.sub( a ), result[1] );
 					}
 
 					if( a.y > canvas.height || b.x < 0 || b.x > canvas.width )
@@ -165,7 +175,7 @@
 
 			function checkCollision( a, b )
 			{
-				var l;
+				var l, hitPoints = [], p, min = 0xffffff, minP;
 
 				for( var i = 0, n = lines.length; i < n; i++ )
 				{
@@ -173,8 +183,81 @@
 
 					if( !hitTestRect( a, b, l.a, l.b ) ) continue;
 					
+					p = detectSegment( a, b, l.a, l.b );
 
+					if( p == null ) continue;
+
+					if( min > p.sub( a ).lengthNonSqrt() )
+					{
+						minP = p;
+						line = l;
+					}
 				}
+
+				if( minP == null ) return null;
+
+				return [ minP, line ];
+			};
+
+			/**
+			* va -> vb, vc -> vd의 두개 선분 교차점 검색
+			*/
+			function detectSegment( va, vb, vc, vd )
+			{
+				var AB = vb.sub( va ),
+					CD = vd.sub( vc );
+				
+				var a = AB.dot( AB ),
+					b = c = AB.dot( CD ),
+					d = CD.dot( CD );
+				
+				var detM = -a * d + b * c;
+
+				if( detM == 0 ) return null; // 행렬식이 없으면 평행하거나, 겹치는 경우. 
+
+				var AC = vc.sub( va );
+
+				var e = AC.dot( AB ),
+					f = AC.dot( CD );
+
+				var s = ( -e * d + b * f ) / detM,
+					t = ( a * f - c * e ) / detM;
+
+				if( s < 0 || s > 1 || t < 0 || t > 1 ) return null;
+
+				return AB.scale( s ).add( va );
+			};
+
+
+			function getReflectionVector( incidentVec, collisionPlane )
+			{
+				// var a = new Line( 
+				// 	new Vector2D( 100, 500 ),
+				// 	new Vector2D( 500, 500 )
+				// );
+
+				// lines.push( a );
+
+				// var r = a.b.sub( a.a ).normal( false ).normalize().scale( 100 );
+
+				// lines.push( new Line( a.a, r.add( a.a ) ) );
+
+				var sub =  collisionPlane.b.sub( collisionPlane.a );
+				var normal = sub.normal();
+				var normalized = normal.normalize();
+				var scalar = incidentVec.dot( normalized );
+				var reflect = normalized.scale( 2 * scalar );
+
+				console.log( "sub >", sub );
+				console.log( "normal >", normal );
+				console.log( "length >", normal.length() );
+				console.log( "normalize >", normal.x / normal.length(), normal.y / normal.length() );
+				console.log( "call normalize >", normal.normalize() );
+				console.log( "normalized vec >", normalized );
+				console.log( "scalar >", scalar );
+				console.log( "reflect >", reflect );
+
+				return incidentVec.sub( reflect );
 			};
 
 			function hitTestRect( a, b, c, d )
