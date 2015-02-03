@@ -2,42 +2,7 @@
 <head>
 	<title>bresenham line draw algorithm example</title>
 	
-	<!-- Pixelate Class -->
-	<script type="text/javascript"> 
-
-		/**
-		* colorBuffer로 현재 픽셀 값을 저장하여 변경된 픽셀만 render 이벤트 발생. 
-		*/
-		function Pixelate( col, row, renderCallback )
-		{
-			this.col = col;
-			this.row = row;
-			this.render = renderCallback;
-
-			this.colorBuffer = [];
-		};
-
-		Pixelate.prototype = 
-		{
-			draw: function( buffer )
-			{
-				for( var i = 0, n = buffer.length; i < n; i++ )
-				{
-					if( typeof buffer === "undefined" || 
-						buffer[i] === this.colorBuffer[i] ) continue;
-
-					this.colorBuffer[i] = buffer[i]; 
-
-					this.render( i % this.col, parseInt( i / this.col ), this.colorBuffer[i] );
-				}
-			},
-
-			clearCache: function()
-			{
-				this.colorBuffer = [];
-			}
-		};
-	</script>
+	
 
 	<!-- Line Draw Methods -->
 	<script type="text/javascript">
@@ -219,6 +184,45 @@
 
 	</script>
 
+
+	<!-- Pixelate Class -->
+	<script type="text/javascript"> 
+
+		/**
+		* colorBuffer로 현재 픽셀 값을 저장하여 변경된 픽셀만 render 이벤트 발생. 
+		*/
+		function Pixelate( col, row, renderCallback )
+		{
+			this.col = col;
+			this.row = row;
+			this.render = renderCallback;
+
+			this.colorBuffer = [];
+		};
+
+		Pixelate.prototype = 
+		{
+			draw: function( buffer )
+			{
+				for( var i = 0, n = buffer.length; i < n; i++ )
+				{
+					if( typeof buffer === "undefined" || 
+						buffer[i] === this.colorBuffer[i] ) continue;
+
+					this.colorBuffer[i] = buffer[i]; 
+
+					this.render( i % this.col, parseInt( i / this.col ), this.colorBuffer[i] );
+				}
+			},
+
+			clearCache: function()
+			{
+				this.colorBuffer = [];
+			}
+		};
+	</script>
+
+
 	<!-- Main Documentaion -->
 	<script type="text/javascript">
 		(function (){
@@ -229,15 +233,16 @@
 				colorBuffer,					// pixel data cache
 				pixelWidth = 38,				// 개별 픽셀 크기
 				pixelHeight = 38,				// 개별 픽셀 크기
-				backgroundColor = "#6d6d6d",	// 배경 픽셀값 
-				center = { x: 0, y: 0, color: "#ff00ff" },					// 중점
-				hourHand = { x: 0, y: 0, color: "#0000ff", len: 0.6 },		// 시침
-				minHand = { x: 0, y: 0, color: "#ff0000", len: 0.7 },		// 분침
-				secHand = { x: 0, y: 0, color: "#3d3d3d", len: 0.8 },		// 초침
+				backgroundColor = 0x6d6d6d,	// 배경 픽셀값 
+				center = { x: 0, y: 0, color: 0x00ff00 },					// 중점
+				hourHand = { x: 0, y: 0, color: 0x0000DD, len: 0.6 },		// 시침
+				minHand = { x: 0, y: 0, color: 0xDD0000, len: 0.7 },		// 분침
+				secHand = { x: 0, y: 0, color: 0x3d3d3d, len: 0.73 },		// 초침
 				hands = [ hourHand, minHand, secHand ],
 				lineToFunc = lineToBresenham, 	// line drawing function
 				_90radian = Math.PI / 2,
-				pixelImg;
+				pixelImg,
+				originalBuf;
 
 			/**
 			* window.onload 
@@ -248,7 +253,11 @@
 				context = canvas.getContext( "2d" );
 				colorBuffer = [];
 
-				pixelImg = document.getElementById( "pixel" );
+				pixelImg = getImageData( document.getElementById( "pixel" ) );
+				originalBuf = cloneArrayBuffer( pixelImg.data );
+
+				pixelWidth = pixelImg.width;
+				pixelHeight = pixelImg.height;
 
 				scene = new Pixelate( 10, 10, onRender.bind( this ) );
 
@@ -261,6 +270,8 @@
 
 				})();
 			};
+
+			
 
 
 			/**
@@ -289,6 +300,7 @@
 			function draw()
 			{
 				clear();
+				drawingScale();
 				setDate();
 
 				for( var n = hands.length; n--; )
@@ -343,6 +355,26 @@
 					{
 						colorBuffer[ y * scene.col + x ] = style[ i % style.length ];
 					}
+				}
+			};
+
+			function drawingScale()
+			{
+				var x, y, t, 
+					cx = context.canvas.width / 2, 
+					cy = context.canvas.height / 2,
+					len = Math.min( cx, cy ) * 0.9;
+
+				for( var i = 0; i < 12; i++ )
+				{
+					t = i / 6 * Math.PI - Math.PI / 2;
+					x = cx + len * Math.cos( t );
+					y = cy + len * Math.sin( t );
+
+					x = parseInt( x / pixelWidth );
+					y = parseInt( y / pixelHeight );
+
+					colorBuffer[ y * scene.col + x ] = 0x2d2d2d;
 				}
 			};
 
@@ -409,21 +441,45 @@
 				context.clearRect( x, y, pixelWidth, pixelHeight );
 				context.save();
 
-					context.setTransform( 1,0,0,1, x + 1, y + 1 );
-
-					if( data == backgroundColor )
-					{
-						context.drawImage( pixelImg, 0, 0 );
-					}
-					else
-					{
-						context.beginPath();
-						context.rect( 0, 0, pixelWidth - 1, pixelHeight - 1 );
-						context.fillStyle = data;
-						context.fill();
-					}
+					context.putImageData( colorMatrix( pixelImg, data ), x, y );
 
 				context.restore();
+			};
+
+			function colorMatrix( img, color )
+			{
+				var r = ( color >> 16 & 0xff ) / 255,
+					g = ( color >> 8 & 0xff ) / 255,
+					b = ( color & 0xff ) / 255;
+
+				for( var i = 0, n = img.data.length; i < n; i += 4 )
+				{
+					img.data[i] = parseInt( originalBuf[i] * r );
+					img.data[i+1] = parseInt( originalBuf[i+1] * g );
+					img.data[i+2] = parseInt( originalBuf[i+2] * b );
+				}
+
+				return img;
+			};
+
+			function getImageData( image )
+			{
+				context.drawImage( image, 0, 0 );
+
+				var imgData = context.getImageData( 0, 0, image.width, image.height );
+
+				context.clearRect( 0, 0, image.width, image.height );
+
+				return imgData;
+			};
+
+			function cloneArrayBuffer( buf )
+			{
+				var clone = new buf.constructor( buf.length );
+
+				clone.set( buf );
+
+				return clone;
 			};
 
 			window.onload = init;
@@ -441,7 +497,7 @@
 <body>
 	<div class="wrapper">
 		<canvas id="canvas"></canvas>
-		<img id="pixel" src="http://dnvy0084.github.io/raw/legoPixel.jpg" alt="pixel" class="asset">
+		<img id="pixel" src="./raw/legoPixel.jpg" alt="pixel" class="asset">
 	</div>
 </body>
 </html>
