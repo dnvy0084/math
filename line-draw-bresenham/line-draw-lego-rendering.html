@@ -231,13 +231,14 @@
 				context,						// CanvasRenderingContext2D
 				scene,							// Pixelate instance
 				colorBuffer,					// pixel data cache
-				pixelWidth = 38,				// 개별 픽셀 크기
-				pixelHeight = 38,				// 개별 픽셀 크기
-				backgroundColor = 0x6d6d6d,	// 배경 픽셀값 
-				center = { x: 0, y: 0, color: 0x00ff00 },					// 중점
-				hourHand = { x: 0, y: 0, color: 0x0000DD, len: 0.6 },		// 시침
-				minHand = { x: 0, y: 0, color: 0xDD0000, len: 0.7 },		// 분침
-				secHand = { x: 0, y: 0, color: 0x3d3d3d, len: 0.73 },		// 초침
+				pixelWidth = 0,					// 개별 픽셀 크기
+				pixelHeight = 0,				// 개별 픽셀 크기
+				backgroundColor = 0xFFFFFF,		// 배경 픽셀값 
+				scaleColor = 0x6d6d6d,
+				center = { x: 0, y: 0, color: 0x3333ff3333 },					// 중점
+				hourHand = { x: 0, y: 0, color: 0x3333ff, len: 0.6 },		// 시침
+				minHand = { x: 0, y: 0, color: 0xff3333, len: 0.7 },		// 분침
+				secHand = { x: 0, y: 0, color: 0x7d7d7d, len: 0.73 },		// 초침
 				hands = [ hourHand, minHand, secHand ],
 				lineToFunc = lineToBresenham, 	// line drawing function
 				_90radian = Math.PI / 2,
@@ -374,7 +375,7 @@
 					x = parseInt( x / pixelWidth );
 					y = parseInt( y / pixelHeight );
 
-					colorBuffer[ y * scene.col + x ] = 0x2d2d2d;
+					colorBuffer[ y * scene.col + x ] = scaleColor;
 				}
 			};
 
