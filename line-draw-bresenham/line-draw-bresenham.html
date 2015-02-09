@@ -169,7 +169,7 @@
 
 			var dx = Math.abs( bx - ax ),
 				dy = Math.abs( by - ay ),
-				m, e, x, y, di, dt, t;
+				e, x, y, di, dt, t;
 
 			var buf = [];
 
@@ -178,7 +178,6 @@
 				di = ax < bx ? +1 : -1;
 				dt = ay < by ? +1 : -1;
 				t = bx + di;
-				m = dy / dx;
 				e = 0;
 
 				for( x = ax, y = ay; x != t; x += di )
@@ -200,7 +199,6 @@
 				di = ay < by ? +1 : -1;
 				dt = ax < bx ? +1 : -1;
 				t = by + di;
-				m = dx / dy;
 				e = 0;
 
 				for( x = ax, y = ay; y != t; y += di )
@@ -231,8 +229,8 @@
 				context,						// CanvasRenderingContext2D
 				scene,							// Pixelate instance
 				colorBuffer,					// pixel data cache
-				pixelWidth = 38,				// 개별 픽셀 크기
-				pixelHeight = 38,				// 개별 픽셀 크기
+				pixelWidth = 10,				// 개별 픽셀 크기
+				pixelHeight = 10,				// 개별 픽셀 크기
 				backgroundColor = "#6d6d6d",	// 배경 픽셀값 
 				center = { x: 0, y: 0, color: "#ff00ff" },					// 중점
 				hourHand = { x: 0, y: 0, color: "#0000ff", len: 0.6 },		// 시침
