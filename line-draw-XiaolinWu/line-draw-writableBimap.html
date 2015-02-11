@@ -1,0 +1,169 @@
+<html>
+<head>
+	<title>Line Draw to ImageData</title>
+</head>
+<script type="text/javascript" src="http://dnvy0084.github.io/l2/js/L2.min.js"></script>
+<script type="text/javascript" src="http://dnvy0084.github.io/l2/js/stats.min.js"></script>
+<script type="text/javascript">
+	
+	(function (){
+
+		var canvas,
+			context,
+			imgData,
+			backgroundColor = 0xcdcdcd,
+			backgroundBuffer,
+			stats,
+			start = new L2.Vec2(),
+			end = new L2.Vec2();
+
+		function init()
+		{
+			console.log( "init" );
+
+			canvas = document.getElementById( "canvas" );
+			context = canvas.getContext( "2d" );
+
+			stats = new Stats();
+			stats.setMode( 0 );
+
+			// align top-left
+			stats.domElement.style.position = 'absolute';
+			stats.domElement.style.left = '0px';
+			stats.domElement.style.top = '0px';
+
+			document.body.appendChild( stats.domElement );
+
+			onResize();
+
+			canvas.addEventListener( "mousedown", onDown );
+			canvas.addEventListener( "mouseup", onUp );
+
+			(function render( ms ){
+
+				stats.begin();
+
+				var r = 500;
+
+				start.x = canvas.width / 2;
+				start.y = canvas.height / 2;
+
+				end.x = start.x + r * Math.cos( ms / 500 );
+				end.y = start.y + r * Math.sin( ms / 500 );
+
+				clear();
+				lineTo( start, end );
+				draw();
+
+				requestAnimationFrame( render );
+
+				stats.end();
+
+			})( 0 );
+		};
+
+		function onDown(e)
+		{
+			start.x = e.clientX;
+			start.y = e.clientY;
+
+			end.x = e.clientX;
+			end.y = e.clientY;
+
+			canvas.addEventListener( "mousemove", onMove );	
+		};
+
+		function onUp(e) 
+		{
+			canvas.removeEventListener( "mousemove", onMove );
+		};
+
+		function onMove(e) 
+		{
+			end.x = e.clientX;
+			end.y = e.clientY;
+
+			clear();
+			lineTo( start, end );
+			draw();
+		}
+
+		function onResize(e)
+		{
+			canvas.width = document.body.clientWidth;
+			canvas.height = document.body.clientHeight;
+
+			imgData = context.createImageData( canvas.width, canvas.height );
+			backgroundBuffer = null;
+
+			clear();
+			lineTo( start, end );
+			draw();
+		};
+
+		function clear()
+		{
+			if( backgroundBuffer == null )
+			{
+				var buf = imgData.data;
+
+				for( var i = 0, n = buf.length; i < n; i += 4 )
+				{
+					buf[i+0] = backgroundColor >> 16 & 0xff;
+					buf[i+1] = backgroundColor >> 8 & 0xff;
+					buf[i+2] = backgroundColor & 0xff;
+					buf[i+3] = 255;
+				}
+
+				backgroundBuffer = new Uint8ClampedArray( buf );
+			}
+
+			imgData.data.set( backgroundBuffer, 0 );
+		};
+
+		function lineTo( a, b )
+		{
+			console.log( a.toString(), b.toString() );
+
+			var buf = L2.rasterLineBetweenVec2( a, b ),
+				x, y, index;
+
+			for( var i = 0, n = buf.length; i < n; i += 2 )
+			{
+				x = buf[i];
+				y = buf[i+1];
+
+				if( x < 0 || x > canvas.width || y < 0 || y > canvas.height ) continue;
+
+				index = 4 * ( y * imgData.width + x );
+
+				imgData.data[ index + 0 ] = 0;
+				imgData.data[ index + 1 ] = 0;
+				imgData.data[ index + 2 ] = 0;
+			}
+		}
+
+		function draw()
+		{
+			context.clearRect( 0, 0, canvas.width, canvas.height );
+
+			context.putImageData( imgData, 0, 0 );
+		};
+ 
+		window.onload = init;
+		window.onresize = onResize;
+		
+	})();
+
+</script>
+<style type="text/css">
+	body{
+		margin: 0px;
+	}
+</style>
+<body>
+	<div class="wrapper">
+		<canvas id="canvas"></canvas>
+	</div>
+</body>
+</html>

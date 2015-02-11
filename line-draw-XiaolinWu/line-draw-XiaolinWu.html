@@ -220,8 +220,8 @@
 				context,						// CanvasRenderingContext2D
 				scene,							// Pixelate instance
 				colorBuffer,					// pixel data cache
-				pixelWidth = 10,				// 개별 픽셀 크기
-				pixelHeight = 10,				// 개별 픽셀 크기
+				pixelWidth = 30,				// 개별 픽셀 크기
+				pixelHeight = 30,				// 개별 픽셀 크기
 				backgroundColor = "#6d6d6d",	// 배경 픽셀값 
 				lines = [],
 				drawingLine,
@@ -275,7 +275,7 @@
 			};
 
 			/**
-			* colorBuffer를 Pixelate로 전달 draw 호출. 
+			* colorBuffer를 Pixelate로 전달 draw 호출.
 			*/
 			function draw()
 			{
@@ -285,7 +285,7 @@
 				{
 					var l = lines[i];
 
-					drawLine( l.a.x, l.a.y, l.b.x, l.b.y, "#0000ff" );
+					drawLine( l.a.x, l.a.y, l.b.x, l.b.y, "#000000" );
 				}
 
 				scene.draw( colorBuffer );
@@ -437,38 +437,40 @@
 				}
 
 				canvas.addEventListener( "mousemove", onMove );	
+				canvas.addEventListener( "touchmove", onMove );
 
 				start.x = e.clientX;
 				start.y = e.clientY;
 
-				drawingLine = new Line( start.clone(), start.clone() );
-				lines.push( drawingLine );
+				//drawingLine = new Line( start.clone(), start.clone() );
+				//lines.push( drawingLine );
 			};
 
 			function onUp(e)
 			{
 				canvas.removeEventListener( "mousemove", onMove );
+				canvas.removeEventListener( "touchmove", onMove );
 
 				drawingLine = null;
 			};
 
 			function onMove(e)
 			{
-				// drawingLine = new Line( 
-				// 	start.clone(),
-				// 	new Vector2D( e.clientX, e.clientY )
-				// );
-
-				// lines.push( drawingLine );
-
-				// start.x = e.clientX;
-				// start.y = e.clientY;
-
 				if( e.type == "touchmove" && e.changedTouches.length )
 					e = e.changedTouches[0];
 
-				drawingLine.b.x = e.clientX;
-				drawingLine.b.y = e.clientY;
+				drawingLine = new Line( 
+					start.clone(),
+					new Vector2D( e.clientX, e.clientY )
+				);
+
+				lines.push( drawingLine );
+
+				start.x = e.clientX;
+				start.y = e.clientY;
+
+				// drawingLine.b.x = e.clientX;
+				// drawingLine.b.y = e.clientY;
 			};
 
 			function onKeyUp(e)
