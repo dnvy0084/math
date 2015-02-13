@@ -2,158 +2,456 @@
 <head>
 	<title>Line Draw to ImageData</title>
 </head>
+<!-- <script type="text/javascript" src="http://127.0.0.1:8000/build/L2.js"></script> -->
 <script type="text/javascript" src="http://dnvy0084.github.io/l2/js/L2.min.js"></script>
 <script type="text/javascript" src="http://dnvy0084.github.io/l2/js/stats.min.js"></script>
+
+<script type="text/javascript">
+	
+	//name space
+	this.display = this.display || {};
+
+	(function ( global ){
+		
+		"use strict";
+
+		function BitmapData( width, height, raw )
+		{
+			this.width = width;
+			this.height = height;
+
+			if( typeof raw !== "undefined" )
+			{
+				if( raw.length !== this.width * this.height * 4 )
+				{
+					throw new Error( "raw size does not match" );
+				}
+				else
+				{
+					this.raw = raw;
+				}
+			}
+			else
+			{
+				this.clear();
+			}
+		};
+
+		BitmapData.prototype = {
+
+			constructor: BitmapData,
+
+			clear: function()
+			{
+				this.raw = new Uint8ClampedArray( 4 * this.width * this.height );
+			},
+
+			getPixel: function( x, y )
+			{
+				var i = this.getRawIndex( x, y );
+
+				if( i === -1 ) return -1;
+
+				return 	this.raw[i  ] << 16 |
+						this.raw[i+1] << 8 |
+						this.raw[i+2] |
+						this.raw[i+3] << 24;
+			},
+
+			getPixelAsHex: function( x, y )
+			{
+				return this.getPixel( x, y ).toString( 16 );
+			},
+
+			setPixel: function( x, y, color )
+			{
+				var i = this.getRawIndex( x, y );
+
+				if( i === -1 ) return;
+
+				this.raw[i  ] = color >> 16 & 0xff;
+				this.raw[i+1] = color >> 8 & 0xff;
+				this.raw[i+2] = color & 0xff;
+				this.raw[i+3] = color >> 24 & 0xff;
+			},
+
+			setPixelRGB: function( x, y, r, g, b, a )
+			{
+				var i = this.getRawIndex( x, y );
+
+				if( i === -1 ) return;
+
+				this.raw[i  ] = r;
+				this.raw[i+1] = g;
+				this.raw[i+2] = b;
+				this.raw[i+3] = a;
+			},
+
+			lineTo: function( ax, ay, bx, by, color )
+			{
+				var buf = L2.rasterLine( ax, ay, bx, by );
+
+				var r = color >> 16 & 0xff,
+					g = color >> 8 & 0xff,
+					b = color & 0xff,
+					a = color >> 24 & 0xff,
+					x , y, n;
+
+				for( var i = 0, l = buf.length; i < l; i += 2 )
+				{
+					n = this.getRawIndex( buf[i], buf[i+1] );
+
+					if( n === -1 ) continue;
+
+					this.raw[n  ] = r;
+					this.raw[n+1] = g;
+					this.raw[n+2] = b;
+					this.raw[n+3] = a;
+				}
+			},
+
+			lineToAntialiased: function( ax, ay, bx, by, color )
+			{
+				var buf = L2.rasterAntialiasingLine( ax, ay, bx, by );
+
+				var r = color >> 16 & 0xff,
+					g = color >> 8 & 0xff,
+					b = color & 0xff,
+					a, x , y, n;
+
+				for( var i = 0, l = buf.length; i < l; i += 3 )
+				{
+					n = this.getRawIndex( buf[i], buf[i+1] );
+
+					if( n === -1 ) continue;
+
+					a = buf[i+2]
+
+					this.raw[n  ] = parseInt(this.raw[n  ] + a * ( r - this.raw[n  ] ));
+					this.raw[n+1] = parseInt(this.raw[n+1] + a * ( g - this.raw[n+1] ));
+					this.raw[n+2] = parseInt(this.raw[n+2] + a * ( b - this.raw[n+2] ));
+					this.raw[n+3] = parseInt(this.raw[n+3] + a * ( 255 * a - this.raw[n+3]));
+				}
+			},
+
+			fillRect: function( x, y, width, height, color )
+			{
+				var i, sx = x,
+					right = x + width, 
+					bottom = y + height;
+
+				var r = color >> 16 & 0xff,
+					g = color >> 8 & 0xff,
+					b = color & 0xff,
+					a = color >> 24 & 0xff;
+
+				for( ; y < bottom; y++ )
+				{
+					if( y < 0 ) continue; 
+					if( y > this.height ) break;
+
+					for( x = sx; x < right; x++ )
+					{
+						if( x < 0 ) continue;
+						if( x > this.width ) break;
+						
+						i = 4 * ( y * this.width + x );
+
+						this.raw[i  ] = color >> 16 & 0xff;
+						this.raw[i+1] = color >> 8 & 0xff;
+						this.raw[i+2] = color & 0xff;
+						this.raw[i+3] = color >> 24 & 0xff;
+					}
+				}
+			},
+
+			copy: function( src, srcoffset, length, offset )
+			{
+				memcpy( this.raw, src, srcoffset, length, offset );	
+			},
+
+			getRawIndex: function( x, y )
+			{
+				if( x < 0 || x > this.width || y < 0 || y > this.height ) return -1;
+
+				return 4 * ( y * this.width + x );
+			},
+		}
+
+		function memcpy( dest, src, srcoffset, length, destoffset )
+		{
+			srcoffset = srcoffset || 0;
+			length = length || src.length;
+			destoffset = destoffset || 0;
+
+			dest.set( src.subarray( srcoffset, srcoffset + length ), destoffset );
+		}
+
+		display.BitmapData = BitmapData;
+		global.memcpy = memcpy;
+
+	})( this );
+
+</script>
+
 <script type="text/javascript">
 	
 	(function (){
+		
+		"use strict";
 
 		var canvas,
 			context,
 			imgData,
-			backgroundColor = 0xcdcdcd,
-			backgroundBuffer,
+			bmpd,
 			stats,
-			start = new L2.Vec2(),
-			end = new L2.Vec2();
+			vec2;
 
 		function init()
 		{
-			console.log( "init" );
-
 			canvas = document.getElementById( "canvas" );
-			context = canvas.getContext( "2d" );
-
-			stats = new Stats();
-			stats.setMode( 0 );
-
-			// align top-left
-			stats.domElement.style.position = 'absolute';
-			stats.domElement.style.left = '0px';
-			stats.domElement.style.top = '0px';
-
-			document.body.appendChild( stats.domElement );
-
-			onResize();
-
-			canvas.addEventListener( "mousedown", onDown );
-			canvas.addEventListener( "mouseup", onUp );
-
-			(function render( ms ){
-
-				stats.begin();
-
-				var r = 500;
-
-				start.x = canvas.width / 2;
-				start.y = canvas.height / 2;
-
-				end.x = start.x + r * Math.cos( ms / 500 );
-				end.y = start.y + r * Math.sin( ms / 500 );
-
-				clear();
-				lineTo( start, end );
-				draw();
-
-				requestAnimationFrame( render );
-
-				stats.end();
-
-			})( 0 );
-		};
-
-		function onDown(e)
-		{
-			start.x = e.clientX;
-			start.y = e.clientY;
-
-			end.x = e.clientX;
-			end.y = e.clientY;
-
-			canvas.addEventListener( "mousemove", onMove );	
-		};
-
-		function onUp(e) 
-		{
-			canvas.removeEventListener( "mousemove", onMove );
-		};
-
-		function onMove(e) 
-		{
-			end.x = e.clientX;
-			end.y = e.clientY;
-
-			clear();
-			lineTo( start, end );
-			draw();
-		}
-
-		function onResize(e)
-		{
 			canvas.width = document.body.clientWidth;
 			canvas.height = document.body.clientHeight;
 
-			imgData = context.createImageData( canvas.width, canvas.height );
-			backgroundBuffer = null;
+			context = canvas.getContext( "2d" );
+			setStats();
 
-			clear();
-			lineTo( start, end );
-			draw();
+			imgData = context.createImageData( 500, 500 );
+
+			bmpd = new display.BitmapData( 500, 500, imgData.data );
+
+			//bmpd.fillRect( 0, 0, 100, 100, 0xffff0000 );
+			bmpd.lineTo( 0, 0, 499, 0, 0xffff0000 );
+			bmpd.lineTo( 0, 0, 0, 499, 0xffff0000 );
+			bmpd.lineTo( 499, 0, 499, 499, 0xffff0000 );
+			bmpd.lineTo( 499, 499, 0, 499, 0xffff0000 );
+
+			(function render( ms ){
+				
+				stats.begin();
+				
+					draw();
+					requestAnimationFrame( render );
+				
+				stats.end();
+
+			})();
+
+			vec2 = new L2.Vec2();
+
+			canvas.addEventListener( "mousedown", onDown );
+			canvas.addEventListener( "mouseup", onUp );
 		};
 
-		function clear()
+		function onDown( e )
 		{
-			if( backgroundBuffer == null )
-			{
-				var buf = imgData.data;
+			canvas.addEventListener( "mousemove", onMove );
 
-				for( var i = 0, n = buf.length; i < n; i += 4 )
-				{
-					buf[i+0] = backgroundColor >> 16 & 0xff;
-					buf[i+1] = backgroundColor >> 8 & 0xff;
-					buf[i+2] = backgroundColor & 0xff;
-					buf[i+3] = 255;
-				}
+			vec2.x = e.clientX,
+			vec2.y = e.clientY;
 
-				backgroundBuffer = new Uint8ClampedArray( buf );
-			}
-
-			imgData.data.set( backgroundBuffer, 0 );
+			canvas.style.cursor = "pointer";
 		};
 
-		function lineTo( a, b )
+		function onUp(e)
 		{
-			console.log( a.toString(), b.toString() );
+			canvas.removeEventListener( "mousemove", onMove );
 
-			var buf = L2.rasterLineBetweenVec2( a, b ),
-				x, y, index;
+			canvas.style.cursor = "auto";
+		};
 
-			for( var i = 0, n = buf.length; i < n; i += 2 )
+
+		function onMove(e)
+		{
+			if( e.ctrlKey )
 			{
-				x = buf[i];
-				y = buf[i+1];
-
-				if( x < 0 || x > canvas.width || y < 0 || y > canvas.height ) continue;
-
-				index = 4 * ( y * imgData.width + x );
-
-				imgData.data[ index + 0 ] = 0;
-				imgData.data[ index + 1 ] = 0;
-				imgData.data[ index + 2 ] = 0;
+				bmpd.lineTo( vec2.x, vec2.y, e.clientX, e.clientY, 0xffff0000 );
 			}
-		}
+			else
+			{
+				bmpd.lineToAntialiased( vec2.x, vec2.y, e.clientX, e.clientY, 0xffff0000 );	
+			}
+
+			vec2.x = e.clientX,
+			vec2.y = e.clientY;
+		};
 
 		function draw()
 		{
 			context.clearRect( 0, 0, canvas.width, canvas.height );
-
 			context.putImageData( imgData, 0, 0 );
 		};
- 
+
+
+
+		function setStats()
+		{
+			stats = new Stats();
+			stats.setMode( 0 );
+
+			stats.domElement.style.position = "absolute";
+			stats.domElement.style.left = (document.body.clientWidth - 80) + "px";
+			stats.domElement.style.top = "0px";
+
+			document.body.appendChild( stats.domElement );
+		}
+
 		window.onload = init;
-		window.onresize = onResize;
-		
+
 	})();
+
+</script>
+
+<script type="text/javascript">
+	
+	// (function (){
+
+	// 	"use strict";
+
+	// 	var canvas,
+	// 		context,
+	// 		imgData,
+	// 		backgroundColor = 0xcdcdcd,
+	// 		backgroundBuffer,
+	// 		stats,
+	// 		start = new L2.Vec2(),
+	// 		end = new L2.Vec2();
+
+	// 	function init()
+	// 	{
+	// 		console.log( "init" );
+
+	// 		canvas = document.getElementById( "canvas" );
+	// 		context = canvas.getContext( "2d" );
+
+	// 		stats = new Stats();
+	// 		stats.setMode( 0 );
+
+	// 		// align top-left
+	// 		stats.domElement.style.position = 'absolute';
+	// 		stats.domElement.style.left = '0px';
+	// 		stats.domElement.style.top = '0px';
+
+	// 		document.body.appendChild( stats.domElement );
+
+	// 		onResize();
+
+	// 		canvas.addEventListener( "mousedown", onDown );
+	// 		canvas.addEventListener( "mouseup", onUp );
+
+	// 		(function render( ms ){
+
+	// 			stats.begin();
+
+	// 			var r = 500;
+
+	// 			start.x = canvas.width / 2;
+	// 			start.y = canvas.height / 2;
+
+	// 			end.x = start.x + r * Math.cos( ms / 500 );
+	// 			end.y = start.y + r * Math.sin( ms / 500 );
+
+	// 			clear();
+	// 			lineTo( start, end );
+	// 			draw();
+
+	// 			requestAnimationFrame( render );
+
+	// 			stats.end();
+
+	// 		})( 0 );
+	// 	};
+
+	// 	function onDown(e)
+	// 	{
+	// 		start.x = e.clientX;
+	// 		start.y = e.clientY;
+
+	// 		end.x = e.clientX;
+	// 		end.y = e.clientY;
+
+	// 		canvas.addEventListener( "mousemove", onMove );	
+	// 	};
+
+	// 	function onUp(e) 
+	// 	{
+	// 		canvas.removeEventListener( "mousemove", onMove );
+	// 	};
+
+	// 	function onMove(e) 
+	// 	{
+	// 		end.x = e.clientX;
+	// 		end.y = e.clientY;
+
+	// 		clear();
+	// 		lineTo( start, end );
+	// 		draw();
+	// 	}
+
+	// 	function onResize(e)
+	// 	{
+	// 		canvas.width = document.body.clientWidth;
+	// 		canvas.height = document.body.clientHeight;
+
+	// 		imgData = context.createImageData( canvas.width, canvas.height );
+	// 		backgroundBuffer = null;
+
+	// 		clear();
+	// 		lineTo( start, end );
+	// 		draw();
+	// 	};
+
+	// 	function clear()
+	// 	{
+	// 		if( backgroundBuffer == null )
+	// 		{
+	// 			var buf = imgData.data;
+
+	// 			for( var i = 0, n = buf.length; i < n; i += 4 )
+	// 			{
+	// 				buf[i+0] = backgroundColor >> 16 & 0xff;
+	// 				buf[i+1] = backgroundColor >> 8 & 0xff;
+	// 				buf[i+2] = backgroundColor & 0xff;
+	// 				buf[i+3] = 255;
+	// 			}
+
+	// 			backgroundBuffer = new Uint8ClampedArray( buf );
+	// 		}
+
+	// 		imgData.data.set( backgroundBuffer, 0 );
+	// 	};
+
+	// 	function lineTo( a, b )
+	// 	{
+	// 		var buf = L2.rasterLineBetweenVec2( a, b ),
+	// 			x, y, index;
+
+	// 		for( var i = 0, n = buf.length; i < n; i += 2 )
+	// 		{
+	// 			x = buf[i];
+	// 			y = buf[i+1];
+
+	// 			if( x < 0 || x > canvas.width || y < 0 || y > canvas.height ) continue;
+
+	// 			index = 4 * ( y * imgData.width + x );
+
+	// 			imgData.data[ index + 0 ] = 0;
+	// 			imgData.data[ index + 1 ] = 0;
+	// 			imgData.data[ index + 2 ] = 0;
+	// 		}
+	// 	}
+
+	// 	function draw()
+	// 	{
+	// 		context.clearRect( 0, 0, canvas.width, canvas.height );
+
+	// 		context.putImageData( imgData, 0, 0 );
+	// 	};
+ 
+	// 	window.onload = init;
+	// 	window.onresize = onResize;
+		
+	// })();
 
 </script>
 <style type="text/css">
