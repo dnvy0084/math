@@ -1,0 +1,296 @@
+<html>
+<head>
+	<title>Canvas Image Processing</title>
+</head>
+<script src="https://code.createjs.com/createjs-2014.12.12.min.js"></script>
+<script type="text/javascript" src="http://dnvy0084.github.io/l2/js/stats.min.js"></script>
+
+<script type="text/javascript">
+	(function (global){
+		
+		"use strict";
+
+		var n = 0;
+
+		function BitmapData( imageData )
+		{
+			this.DisplayObject_constructor();
+
+			this.imageData = imageData;
+			this.buf = new Uint8ClampedArray( this.imageData.data );
+		};
+
+		var p = createjs.extend( BitmapData, createjs.DisplayObject );
+
+		p.draw = function( context, ignoreCache )
+		{
+			if( n++ < 1 ) console.log( context );
+
+			context.putImageData( this.imageData, 0, 0 );
+		};
+
+		p.getBounds = function() 
+		{
+			var rect = this.DisplayObject_getBounds();
+
+			if (rect) { return rect; }
+
+			
+			var hasContent = this.imageData;
+
+			return hasContent ? this._rectangle.setValues(0, 0, this.imageData.width, this.imageData.height) : null;
+		};
+
+		p.brightness = function( value )
+		{
+			var buf = this.imageData.data;
+
+			for( var i = 0, l = buf.length; i < l; i += 4 )
+			{
+				buf[i  ] = this.buf[i  ] + value;
+				buf[i+1] = this.buf[i+1] + value;
+				buf[i+2] = this.buf[i+2] + value;
+			}
+		};
+
+		p.grayscale = function( value )
+		{
+			var buf = this.imageData.data,
+				r, g, b, gray;
+
+			for( var i = 0, l = buf.length; i < l; i += 4 )
+			{
+				r = this.buf[i  ];
+				g = this.buf[i+1];
+				b = this.buf[i+2];
+
+				gray = r * 0.2 + g * 0.7 + b * 0.1;
+
+				buf[i  ] = r + value * ( gray - r );
+				buf[i+1] = g + value * ( gray - g );
+				buf[i+2] = b + value * ( gray - b );
+			}
+		};
+
+		global.BitmapData = createjs.promote( BitmapData, "DisplayObject" );
+
+	})(this);
+
+</script>
+
+<script type="text/javascript">
+	(function (){
+
+		"use strict";
+
+		var canvas,
+			context,
+			bitmap,
+			stage,
+			dropZone,
+			shape,
+			bmpd,
+			stats;
+
+		function init()
+		{
+			dropZone = document.getElementById( "dropZone" );
+			canvas = document.getElementById( "canvas" );
+			context = canvas.getContext( "2d" );
+
+			stage = new createjs.Stage( "canvas" );
+			stats = addStats();
+
+			onResize();
+			addEvents();
+
+			createjs.Ticker.addEventListener( "tick", onTick );
+			createjs.Ticker.setFPS( 60 );
+
+			shape = testCreateJS();
+			stage.addChild( shape );
+		};
+
+
+		var range = { min: 40, max: 180 };
+
+		function onTick(e)
+		{
+			stats.begin();
+
+				var t = Math.cos( e.runTime / 500 );
+
+				shape.x = canvas.width / 2 + canvas.width / 2 * t;
+
+				if( bmpd )
+				{
+					// bmpd.brightness( t * ( range.max - range.min ) + range.min );
+					bmpd.grayscale( 0.5 * t + 0.5 );
+				}
+
+				stage.update();
+
+			stats.end();
+		};
+
+		function addEvents(e)
+		{
+			dropZone.addEventListener( "dragover", onDragOver );
+			dropZone.addEventListener( "drop", onDrop );
+		};
+
+		function onDragOver(e)
+		{
+			e.stopPropagation();
+			e.preventDefault();
+
+			e.dataTransfer.dropEffect = "copy";
+		};
+
+		function onDrop(e)
+		{
+			e.stopPropagation();
+			e.preventDefault();
+
+			var files = e.dataTransfer.files;
+
+			for( var i = 0, l = files.length; i < l; i++ )
+			{
+				var f = files[i];
+
+				console.log( "name: %s, size: %dkb, type: %s", f.name, f.size / 1024, f.type );
+			}
+
+			var reader = new FileReader();
+
+			reader.onload = function(e)
+			{
+				var img = new Image();
+
+				img.onload = function(e)
+				{
+					console.log( img.width, img.height );
+
+					context.drawImage( img, 0, 0 );
+					var imgData = context.getImageData( 0, 0, img.width, img.height );
+
+					context.clearRect( 0, 0, img.width, img.height );
+
+					bmpd = new BitmapData( imgData );
+					stage.addChildAt( bmpd, 0 );
+
+					document.getElementById( "dropZone-container" ).className = "deepspace";
+				}
+
+				img.src = reader.result;
+			}
+
+			reader.readAsDataURL( f );
+		};
+
+		function onResize(e)
+		{
+			canvas.width = document.body.clientWidth;
+			canvas.height = document.body.clientHeight;
+
+			stats.domElement.style.left = (document.body.clientWidth - 80) + "px";
+		};
+
+		function addStats()
+		{
+			var stats = new Stats();
+
+			stats.setMode( 0 );
+
+			stats.domElement.style.position = "absolute";
+			stats.domElement.style.left = (document.body.clientWidth - 80) + "px";
+			stats.domElement.style.top = "0px";
+
+			document.body.appendChild( stats.domElement );
+
+			return stats;
+		}
+
+		window.onload = init;
+		window.onresize = onResize;
+
+
+		function testCreateJS()
+		{
+			var g = new createjs.Graphics();
+
+			g.beginFill( "#f00" );
+			g.drawCircle( 0, 0, 10 );
+			g.endFill();
+
+			var s = new createjs.Shape( g );
+
+			s.x = s.y = 500;
+
+			return s;
+		};
+
+	})();
+</script>
+
+
+<style type="text/css">
+	body{
+		margin: 0px;
+	}
+	canvas{
+		background-color: #00f;
+	}
+
+	.blank{
+		background-color: #ededed;
+	}
+
+	.red{
+		background-color: #f00;
+	}
+
+	.outer{
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 50%;
+	}
+
+	.deepspace
+	{
+		position: absolute;
+		top: 100000px;
+	}
+
+	#dropZone{
+		position: absolute;
+		width: 100%;
+		font-weight: bold;
+		font-size: 3em;
+		font-family: NanumGothic;
+		border: 3px dotted #3d3d3d;
+		border-radius: 8px;
+		border-color: #adadad;
+		margin: 10px;
+		padding: 10px;
+		color: #adadad;
+
+		text-align: center;
+
+		transform: translate( -50%, -50% );
+	}
+</style>
+
+
+<body>
+	<div class="wrapper">
+		<canvas id="canvas" class="blank">
+			canvas 2d rendering context;
+		</canvas>
+		<div class="outer" id="dropZone-container">
+			<div class="file" id="dropZone">drag and drop file here</div>
+		</div>
+	</div>
+</body>
+</html>
